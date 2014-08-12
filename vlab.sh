@@ -5,7 +5,9 @@ NUM=1
 BACKING_FILE=/home/images/rhel6.qcow2
 SIZE=10
 RAM=4096
-PUBLIC_KEY="$(<~sstar/.ssh/id_rsa.pub)"
+#PUBLIC_KEY="$(<~sstar/.ssh/id_rsa.pub)"
+PUBLIC_KEY="$(</home/sstar/.vagrant.d/insecure_public_key.pub)"
+ROOT_PASSWORD=redhat
 
 # Additional options
 DISK_POOL=default
@@ -68,8 +70,8 @@ function delete_guests(){
 
 function setup_guests(){
     # Set SSH root keys and password
-    pass=$(getPass)
-    virt-customize -a $OUTPUT_FILE --run-command "fgrep -q \"$PUBLIC_KEY\" /root/authorized_keys && echo \"Key already exists.\" || echo \"$PUBLIC_KEY\" >> /root/authorized_keys" --root-password "password:$pass" --hostname $NAME
+    if [[ -z "$ROOT_PASSWORD" ]]; then pass=$(getPass); else pass=$ROOT_PASSWORD; fi
+    virt-customize -a $OUTPUT_FILE --run-command "fgrep -q \"$PUBLIC_KEY\" /root/authorized_keys && echo \"Key already exists.\" || mkdir -p -m 0700 /root/.ssh; echo \"$PUBLIC_KEY\" >> /root/.ssh/authorized_keys" --root-password "password:$pass" --hostname $NAME
 
 }
 
