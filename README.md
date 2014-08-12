@@ -19,6 +19,8 @@ Inputs:
 == Example
 
 Creating a single VM
+
+`
 `
 $ time sudo ./vlab.sh create
 Formatting '/var/lib/libvirt/images/foreman_el6-i1.qcow2', fmt=qcow2 size=10737418240 backing_file='/home/images/rhel6.qcow2' encryption=off cluster_size=65536 lazy_refcounts=off 
