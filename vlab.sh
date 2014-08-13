@@ -5,8 +5,8 @@ NUM=1
 BACKING_FILE=/home/images/rhel6.qcow2
 SIZE=10
 RAM=4096
-#PUBLIC_KEY="$(<~sstar/.ssh/id_rsa.pub)"
-PUBLIC_KEY="$(</home/sstar/.vagrant.d/insecure_public_key.pub)"
+PUBLIC_KEY="$(<~sstar/.ssh/id_rsa.pub)"
+#PUBLIC_KEY="$(</home/sstar/.vagrant.d/insecure_public_key.pub)"
 ROOT_PASSWORD=redhat
 
 # Additional options
@@ -70,17 +70,48 @@ function delete_guests(){
 
 function setup_guests(){
     # Set SSH root keys and password
-    if [[ -z "$ROOT_PASSWORD" ]]; then pass=$(getPass); else pass=$ROOT_PASSWORD; fi
-    virt-customize -a $OUTPUT_FILE --run-command "fgrep -q \"$PUBLIC_KEY\" /root/authorized_keys && echo \"Key already exists.\" || mkdir -p -m 0700 /root/.ssh; echo \"$PUBLIC_KEY\" >> /root/.ssh/authorized_keys" --root-password "password:$pass" --hostname $NAME
+    if [[ -z "$ROOT_PASSWORD" ]]; then pass=$(get_pass); else pass=$ROOT_PASSWORD; fi
+    virt-customize  -a $OUTPUT_FILE --root-password "password:$pass" --hostname $NAME
 
 }
 
 function usage(){
-    echo "Usage $0 (create|delete|status)"
+    echo "Usage $0 (create|delete|provision|status)"
 }
 
-function getPass(){
+function get_pass(){
     python -c "import string, random; print \"\".join([random.choice(string.letters + string.digits) for i in range(8)])"
+}
+
+function get_ip(){
+    NAME=$1
+    mac_addr=$(virsh dumpxml $NAME| xmllint --xpath '//interface[1]/mac/@address' - | awk -F\" '{print $2}')
+    net_name=$(virsh dumpxml $NAME| xmllint --xpath '//interface[1]/source/@network' - | awk -F\" '{print $2}')
+    cat /var/lib/libvirt/dnsmasq/${net_name}.leases | awk "\$2 ~ \"$mac_addr\" { print \$3; }; " | tail -1
+}
+
+function provision(){
+    # Run provisioning script for the new VM
+
+    for n in $(eval echo {1..$NUM}); do
+        NAME=${BASENAME}-i${n}
+        IP=$(get_ip $NAME)
+        [[ -z "$IP" ]] && echo "Waiting for IP address on $NAME..."
+        while [[ -z "$IP" ]]; do
+            IP=$(get_ip $NAME)
+        done
+        echo "Attempting to provision '$NAME' ($IP)"
+    done
+}
+
+function status(){
+    # Show status for all guests
+
+    for n in $(eval echo {1..$NUM}); do
+        NAME=${BASENAME}-i${n}
+        IP=$(get_ip $NAME)
+        echo "Guest: '$NAME' (${IP:-no IP address})"
+    done
 }
 
 case $* in
@@ -94,12 +125,14 @@ case $* in
         ;;
 
     status)
-        # Todo
-        echo "Not implemented"
+        status
+        ;;
+
+    provision)
+        provision
         ;;
 
     *)
         usage
         ;;
-
 esac
