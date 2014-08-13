@@ -1,0 +1,26 @@
+#!/bin/bash
+
+function get_ip(){
+    NAME=$1
+    mac_addr=$(virsh dumpxml $NAME| xmllint --xpath '//interface[1]/mac/@address' - | awk -F\" '{print $2}')
+    net_name=$(virsh dumpxml $NAME| xmllint --xpath '//interface[1]/source/@network' - | awk -F\" '{print $2}')
+    cat /var/lib/libvirt/dnsmasq/${net_name}.leases | awk "\$2 ~ \"$mac_addr\" { print \$3; }; " | tail -1
+}
+
+function usage(){
+    echo "Usage: $0 [ DOMAIN ]"
+}
+
+if [[ $# -eq 0 ]]; then
+    vms=$(virsh list | grep 'running' | awk '{print $2}'); 
+    for vm in $vms; do
+        ip=$(get_ip $vm)
+        printf "%-20s %s\n" $vm $ip
+    done
+elif [[ $# -eq 1 ]]; then
+    get_ip $1
+else
+    echo "Invalid number of parameters. Expected 0 or 1."
+    usage
+fi
+
