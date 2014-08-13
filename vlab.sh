@@ -18,6 +18,7 @@ VCPUS=2
 QEMU_IMG=$(which qemu-img)
 VIRT_INSTALL=$(which virt-install)
 VIRSH=$(which virsh)
+VIRT_IP=./virt-ip
 
 # Inferred variables
 POOL_PATH=$(virsh pool-dumpxml "$DISK_POOL" | xml_grep '/pool/target/path'  --text_only)
@@ -83,24 +84,26 @@ function get_pass(){
     python -c "import string, random; print \"\".join([random.choice(string.letters + string.digits) for i in range(8)])"
 }
 
-function get_ip(){
-    NAME=$1
-    mac_addr=$(virsh dumpxml $NAME| xmllint --xpath '//interface[1]/mac/@address' - | awk -F\" '{print $2}')
-    net_name=$(virsh dumpxml $NAME| xmllint --xpath '//interface[1]/source/@network' - | awk -F\" '{print $2}')
-    cat /var/lib/libvirt/dnsmasq/${net_name}.leases | awk "\$2 ~ \"$mac_addr\" { print \$3; }; " | tail -1
-}
-
 function provision(){
     # Run provisioning script for the new VM
 
     for n in $(eval echo {1..$NUM}); do
         NAME=${BASENAME}-i${n}
-        IP=$(get_ip $NAME)
+        IP=$($VIRT_IP $NAME)
         [[ -z "$IP" ]] && echo "Waiting for IP address on $NAME..."
         while [[ -z "$IP" ]]; do
-            IP=$(get_ip $NAME)
+            IP=$($VIRT_IP $NAME)
         done
         echo "Attempting to provision '$NAME' ($IP)"
+
+        # Fetch our host key, so we can login (safely)
+        SSH_HOST_KEY=$(virt-cat -d $NAME /etc/ssh/ssh_host_rsa_key.pub)
+        sed -i ~/.ssh/known_hosts -e '/^192.168.122.221 /d'
+        echo "$IP $SSH_HOST_KEY" >> ~/.ssh/known_hosts
+
+        # Copy SSH key to host
+        echo "$PUBLIC_KEY" | ssh root@$IP "mkdir -p -m700 ~/.ssh; cat >> ~/.ssh/authorized_keys; restorecon -R ~/.ssh"
+        
         . ./provision.sh
         echo "Done provisioning"
     done
@@ -111,7 +114,7 @@ function status(){
 
     for n in $(eval echo {1..$NUM}); do
         NAME=${BASENAME}-i${n}
-        IP=$(get_ip $NAME)
+        IP=$($VIRT_IP $NAME)
         echo "Guest: '$NAME' (${IP:-no IP address})"
     done
 }
