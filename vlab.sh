@@ -6,8 +6,8 @@ BACKING_FILE=/home/images/rhel6.qcow2
 SIZE=10
 RAM=4096
 PUBLIC_KEY="$(<~sstar/.ssh/id_rsa.pub)"
-#PUBLIC_KEY="$(</home/sstar/.vagrant.d/insecure_public_key.pub)"
 ROOT_PASSWORD=redhat
+PROVISION_SCRIPT=./provision.sh
 
 # Additional options
 DISK_POOL=default
@@ -101,6 +101,8 @@ function provision(){
             IP=$(get_ip $NAME)
         done
         echo "Attempting to provision '$NAME' ($IP)"
+        . ./provision.sh
+        echo "Done provisioning"
     done
 }
 
