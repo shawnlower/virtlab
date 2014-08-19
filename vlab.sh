@@ -1,5 +1,9 @@
 #!/bin/bash
 
+## Todos:
+# - ensure tools (e.g. xml_grep) are installed
+# - ensure default network/storage is defined
+
 BASENAME=foreman_el6
 NUM=1
 BACKING_FILE=/home/images/rhel6.qcow2
