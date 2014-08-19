@@ -99,6 +99,12 @@ function provision(){
         while [[ -z "$IP" ]]; do
             IP=$($VIRT_IP $NAME)
         done
+        echo -n "Waiting for SSH server to become available"
+        until nc -v -w3 $IP; do
+            echo -en '.'
+        done
+        echo ""
+
         echo "Attempting to provision '$NAME' ($IP)"
 
         # Fetch our host key, so we can login (safely)
