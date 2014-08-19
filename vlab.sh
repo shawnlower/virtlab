@@ -23,9 +23,10 @@ QEMU_IMG=$(which qemu-img)
 VIRT_INSTALL=$(which virt-install)
 VIRSH=$(which virsh)
 VIRT_IP=./virt-ip
+XML_GREP=$(which xml_grep)
 
 # Inferred variables
-POOL_PATH=$(virsh pool-dumpxml "$DISK_POOL" | xml_grep '/pool/target/path'  --text_only)
+POOL_PATH=$(virsh pool-dumpxml "$DISK_POOL" | $XML_GREP '/pool/target/path'  --text_only)
 if [[ -z $POOL_PATH ]]; then
     echo "Unable to determine filesystem path for pool '$DISK_POOL'." 2>/dev/null
     echo "Only 'dir' type pools are currently supported." 2>/dev/null
